@@ -1,0 +1,43 @@
+@model List<NewsGlobe.Models.NewsItem>
+@using System.Linq
+@{
+    ViewData["Title"] = "Lista de Notícias";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>Lista de Notícias</h2>
+
+<table class="table table-striped mt-4">
+    <thead>
+        <tr>
+            <th>Título</th>
+            <th>Descrição</th>
+            <th>Latitude</th>
+            <th>Longitude</th>
+            <th>Data</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model != null && Model.Any())
+        {
+            foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.Title</td>
+                    <td>@item.Description</td>
+                    <td>@item.Latitude</td>
+                    <td>@item.Longitude</td>
+                    <td>@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                </tr>
+            }
+        }
+        else
+        {
+            <tr>
+                <td colspan="5" class="text-center text-muted">Nenhuma notícia cadastrada ainda.</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<a href="/" class="btn btn-primary mt-3">Voltar para o mapa</a>

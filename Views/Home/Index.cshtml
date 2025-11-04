@@ -1,0 +1,144 @@
+@{
+    ViewData["Title"] = "Mapa de Notícias";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h3>Mapa do Mundo</h3>
+<div id="map" style="height: 650px; width: 100%;"></div>
+
+
+<!-- //CSS e JS do Leaflet -->
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+    
+    // cria e exibe um mapa Leaflet
+    const map = L.map('map').setView([0, 0], 2);
+
+    
+    // Camada base OpenStreetMap
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+    
+    
+    //Carrega as notícias existentes
+    function loadNews() {
+        fetch('/api/news')
+            .then(res => res.json())
+            .then(data => {
+                
+                // Remove para excluir os marcadores
+                
+                map.eachLayer(layer => {
+                    if (layer instanceof L.Marker) map.removeLayer(layer);
+                });
+
+                // Add para adicionar os marcadores
+                data.forEach(noticia => {
+                    const marker = L.marker([noticia.lat, noticia.lon]).addTo(map);
+
+                    const popupHtml = `
+                        <div style="font-family: 'Segoe UI', sans-serif; max-width: 230px;">
+                            <b style="font-size:14px;">${noticia.titulo}</b><br>
+                            <p style="font-size:13px; margin-top:4px; color:#444;">${noticia.descricao}</p>
+                            <button onclick="removerNoticia(${noticia.id})" 
+                                style="background:red;color:white;border:none;padding:6px 10px;border-radius:5px;cursor:pointer;width:100%;margin-top:6px;">
+                                Remover
+                            </button>
+                        </div>
+                    `;
+
+                    marker.bindPopup(popupHtml);
+                });
+            })
+            .catch(err => console.error(err));
+    }
+    loadNews();
+
+    
+    function removerNoticia(id) {
+        if (!confirm("Deseja realmente remover esta notícia?")) return;
+
+        fetch(`/api/news/${id}`, { method: 'DELETE' })
+            .then(res => {
+                if (!res.ok) throw new Error('Erro ao excluir notícia');
+                alert('Notícia removida com sucesso!');
+                loadNews();
+            })
+            .catch(err => alert(err));
+    }
+
+    // Cadastro de nova notícia ao clicar no mapa
+    map.on('click', function (e) {
+        const lat = e.latlng.lat.toFixed(6);
+        const lon = e.latlng.lng.toFixed(6);
+
+        
+        const formHtml = `
+          <div style="font-family: 'Segoe UI', sans-serif; padding: 8px; max-width: 230px;">
+            <h5 style="margin-top:0; margin-bottom:8px; font-weight:600; color:#333;">Nova notícia</h5>
+
+            <label style="font-size: 13px; color: #555;">Título:</label>
+            <input type="text" id="tituloInput"
+              style="width:100%; padding:6px; border:1px solid #ccc; border-radius:5px; margin-bottom:8px;">
+
+            <label style="font-size: 13px; color: #555;">Descrição:</label>
+            <textarea id="descInput" rows="3"
+              style="width:100%; padding:6px; border:1px solid #ccc; border-radius:5px; margin-bottom:10px; resize:none;"></textarea>
+
+            <button id="salvarBtn"
+              style="background-color:#2E8B57; color:white; padding:8px 12px; border:none; border-radius:5px; cursor:pointer; font-weight:500; width:100%;">
+            Salvar
+            </button>
+          </div>
+        `;
+
+        
+        const popup = L.popup()
+            .setLatLng([lat, lon])
+            .setContent(formHtml)
+            .openOn(map);
+
+        
+        //botão salvar
+        setTimeout(() => {
+            const salvarBtn = document.getElementById('salvarBtn');
+
+
+            salvarBtn.onmouseover = () => salvarBtn.style.backgroundColor = '#246c45';
+            salvarBtn.onmouseout = () => salvarBtn.style.backgroundColor = '#2E8B57';
+
+            
+            salvarBtn.onclick = () => {
+                const titulo = document.getElementById('tituloInput').value.trim();
+                const descricao = document.getElementById('descInput').value.trim();
+
+                if (!titulo || !descricao) {
+                    alert('Preencha título e descrição.');
+                    return;
+                }
+
+                fetch('/api/news', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: titulo,
+                        description: descricao,
+                        latitude: parseFloat(lat),
+                        longitude: parseFloat(lon)
+                    })
+                })
+                .then(res => {
+                    if (!res.ok) throw new Error('Erro ao salvar notícia');
+                    map.closePopup();
+                    loadNews();
+                })
+                .catch(err => alert(err));
+            };
+        }, 100);
+    });
+</script>
